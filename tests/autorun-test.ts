@@ -11,7 +11,7 @@ QUnit.test('autorun', function(assert) {
   assert.equal(step++, 0);
 
   bb.schedule('zomg', null, () => {
-    assert.equal(step, 2);
+    assert.equal(step++, 2);
     setTimeout(() => {
       assert.ok(!bb.hasTimers(), 'The all timers are cleared');
       done();
@@ -57,4 +57,19 @@ QUnit.test('autorun (joins next run if not yet flushed)', function(assert) {
     one: { count: 1, order: 0 },
     two: { count: 1, order: 1 }
   });
+});
+
+QUnit.test('can be canceled (private API)', function(assert) {
+  assert.expect(0);
+
+  let done = assert.async();
+  let bb = new Backburner(['zomg']);
+
+  bb.schedule('zomg', null, () => {
+    assert.notOk(true, 'should not flush');
+  });
+
+  bb['_cancelAutorun']();
+
+  setTimeout(done, 10);
 });

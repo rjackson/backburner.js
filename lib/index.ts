@@ -45,6 +45,15 @@ function parseArgs() {
   return [target, method, args];
 }
 
+const DEFAULT_NEXT = (() => {
+  if (typeof Promise === 'function') {
+    const autorunPromise = Promise.resolve();
+    return (fn) => autorunPromise.then(fn);
+  }
+
+  return (fn) => SET_TIMEOUT(fn, 0);
+})();
+
 export default class Backburner {
   public static Queue = Queue;
 
@@ -103,7 +112,7 @@ export default class Backburner {
     let platform = Object.create(null);
     platform.setTimeout = _platform.setTimeout || ((fn, ms) => setTimeout(fn, ms));
     platform.clearTimeout = _platform.clearTimeout || ((id) => clearTimeout(id));
-    platform.next = _platform.next || ((fn) => SET_TIMEOUT(fn, 0));
+    platform.next = _platform.next || DEFAULT_NEXT;
     platform.clearNext = _platform.clearNext || platform.clearTimeout;
     platform.now = _platform.now || (() => Date.now());
 
@@ -114,6 +123,9 @@ export default class Backburner {
     };
 
     this._boundAutorunEnd = () => {
+      // if the autorun was already flushed, do nothing
+      if (this._autorun === null) { return; }
+
       this._autorun = null;
       this.end();
     };
