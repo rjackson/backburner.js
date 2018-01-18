@@ -175,8 +175,7 @@ export default class Backburner {
         finallyAlreadyCalled = true;
 
         if (result === QUEUE_STATE.Pause) {
-          const next = this._platform.next;
-          this._autorun = next(this._boundAutorunEnd);
+          this._scheduleAutorun();
         } else {
           this.currentInstance = null;
 
@@ -774,9 +773,13 @@ export default class Backburner {
     let currentInstance = this.currentInstance;
     if (currentInstance === null) {
       currentInstance = this.begin();
-      const next = this._platform.next;
-      this._autorun = next(this._boundAutorunEnd);
+      this._scheduleAutorun();
     }
     return currentInstance;
+  }
+
+  private _scheduleAutorun() {
+    const next = this._platform.next;
+    this._autorun = next(this._boundAutorunEnd);
   }
 }
