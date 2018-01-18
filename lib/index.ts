@@ -108,7 +108,7 @@ export default class Backburner {
       if (this._autorun === null) { return; }
 
       this._autorun = null;
-      this.end();
+      this.end(true /* fromAutorun */);
     };
 
     let _platform = this.options._platform || {};
@@ -173,7 +173,7 @@ export default class Backburner {
     return current;
   }
 
-  public end() {
+  public end(fromAutorun = false) {
     let currentInstance = this.currentInstance;
     let nextInstance: DeferredActionQueues | null  = null;
 
@@ -186,7 +186,7 @@ export default class Backburner {
     let finallyAlreadyCalled = false;
     let result;
     try {
-      result = currentInstance.flush();
+      result = currentInstance.flush(fromAutorun);
     } finally {
       if (!finallyAlreadyCalled) {
         finallyAlreadyCalled = true;
