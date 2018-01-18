@@ -45,15 +45,6 @@ function parseArgs() {
   return [target, method, args];
 }
 
-const DEFAULT_NEXT = (() => {
-  if (typeof Promise === 'function') {
-    const autorunPromise = Promise.resolve();
-    return (fn) => autorunPromise.then(fn);
-  }
-
-  return (fn) => SET_TIMEOUT(fn, 0);
-})();
-
 export default class Backburner {
   public static Queue = Queue;
 
@@ -108,16 +99,6 @@ export default class Backburner {
     this._onBegin = this.options.onBegin || noop;
     this._onEnd = this.options.onEnd || noop;
 
-    let _platform = this.options._platform || {};
-    let platform = Object.create(null);
-    platform.setTimeout = _platform.setTimeout || ((fn, ms) => setTimeout(fn, ms));
-    platform.clearTimeout = _platform.clearTimeout || ((id) => clearTimeout(id));
-    platform.next = _platform.next || DEFAULT_NEXT;
-    platform.clearNext = _platform.clearNext || platform.clearTimeout;
-    platform.now = _platform.now || (() => Date.now());
-
-    this._platform = platform;
-
     this._boundRunExpiredTimers = () => {
       this._runExpiredTimers();
     };
@@ -129,6 +110,42 @@ export default class Backburner {
       this._autorun = null;
       this.end();
     };
+
+    let _platform = this.options._platform || {};
+    let platform = Object.create(null);
+    platform.setTimeout = _platform.setTimeout || ((fn, ms) => setTimeout(fn, ms));
+    platform.clearTimeout = _platform.clearTimeout || ((id) => clearTimeout(id));
+    platform.clearNext = _platform.clearNext || platform.clearTimeout;
+    platform.now = _platform.now || (() => Date.now());
+
+    // TODO: do we need this?
+    if (_platform.next) {
+      platform.next = _platform.next;
+
+    // supports Node and "evergreen" browsers
+    } else if (typeof Promise === 'function') {
+      const autorunPromise = Promise.resolve();
+      platform.next = () => autorunPromise.then(this._boundAutorunEnd);
+
+    // supports IE11
+    } else if (typeof MutationObserver === 'function') {
+      let iterations = 0;
+      let observer = new MutationObserver(this._boundAutorunEnd);
+      let node = document.createTextNode('');
+      observer.observe(node, { characterData: true });
+
+      platform.next = () => {
+        iterations = ++iterations % 2;
+        node.data = '' + iterations;
+        return iterations;
+      };
+
+    // do we need this fallback?
+    } else {
+      platform.next = () => SET_TIMEOUT(this._boundAutorunEnd, 0);
+    }
+
+    this._platform = platform;
   }
 
   /*
